@@ -3,12 +3,14 @@ session_start();
 if(!isset($_SESSION['user_id'])){header("Location: index.php");exit;}
 if($_SESSION['role']=='admin'){header("Location: admin.php");exit;}
 require 'db.php';
+$st=$pdo->prepare("SELECT career FROM users WHERE id=?"); $st->execute([$_SESSION['user_id']]);
+$career=$st->fetch()['career'] ?? 'Carrera';
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>App</title>
+    <title>Instituto Hermanos Cárcamo - Estudiante</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
@@ -26,7 +28,7 @@ require 'db.php';
     </style>
 </head>
 <body>
-<div class="head"><b>App Estudiante</b><a href="logout.php" style="color:white;"><i class="fas fa-power-off"></i></a></div>
+<div class="head"><b>Portal Estudiante – <?=$career?></b><a href="logout.php" style="color:white;"><i class="fas fa-power-off"></i></a></div>
 
 <div id="v1" class="v active">
     <div class="card">

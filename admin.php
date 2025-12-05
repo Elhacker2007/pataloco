@@ -3,20 +3,36 @@ session_start(); require 'db.php';
 if(!isset($_SESSION['user_id'])){header("Location: index.php");exit;}
 $stmt=$pdo->prepare("SELECT role FROM users WHERE id=?"); $stmt->execute([$_SESSION['user_id']]);
 if($stmt->fetch()['role']!=='admin'){header("Location: dashboard.php");exit;}
-$ev=$pdo->query("SELECT e.*,u.username FROM evidencias e JOIN users u ON e.user_id=u.id ORDER BY e.fecha DESC")->fetchAll();
+$defaultCareer = $_GET['career'] ?? 'Todos';
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>OJO DE DIOS</title>
+    <title>Instituto Hermanos Cárcamo - Supervisión</title>
     <link rel="stylesheet" href="estilos.css?v=<?=time()?>">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="admin-mode">
 <div class="sidebar">
-    <div class="brand"><i class="fas fa-eye"></i> OJO DE DIOS</div>
+    <div class="brand"><i class="fas fa-eye"></i> Supervisión</div>
+    <div style="padding:10px">
+        <div style="margin-bottom:8px">
+            <a href="admin.php?career=Administraci%C3%B3n%20de%20Negocios%20Internacionales" style="color:#0f0;display:block">Administración de Negocios Internacionales</a>
+            <a href="admin.php?career=Arquitectura%20de%20Plataformas%20y%20Servicios%20de%20T.I" style="color:#0f0;display:block">Arquitectura de Plataformas y Servicios de T.I</a>
+            <a href="admin.php?career=Contabilidad" style="color:#0f0;display:block">Contabilidad</a>
+            <a href="admin.php?career=Desarrollo%20Pesquero%20y%20Acu%C3%ADcola" style="color:#0f0;display:block">Desarrollo Pesquero y Acuícola</a>
+            <a href="admin.php?career=Todos" style="color:#999;display:block">Todos</a>
+        </div>
+        <select id="carSel" style="width:100%;padding:10px;background:#111;color:#0f0;border:1px solid #333;">
+            <option <?= $defaultCareer==='Todos'? 'selected':'' ?>>Todos</option>
+            <option <?= $defaultCareer==='Administración de Negocios Internacionales'? 'selected':'' ?>>Administración de Negocios Internacionales</option>
+            <option <?= $defaultCareer==='Arquitectura de Plataformas y Servicios de T.I'? 'selected':'' ?>>Arquitectura de Plataformas y Servicios de T.I</option>
+            <option <?= $defaultCareer==='Contabilidad'? 'selected':'' ?>>Contabilidad</option>
+            <option <?= $defaultCareer==='Desarrollo Pesquero y Acuícola'? 'selected':'' ?>>Desarrollo Pesquero y Acuícola</option>
+        </select>
+    </div>
     <div class="user-list" id="ulist"></div>
     <div style="padding:10px;text-align:center;"><a href="logout.php" style="color:#666;">SALIR</a></div>
 </div>
@@ -24,9 +40,21 @@ $ev=$pdo->query("SELECT e.*,u.username FROM evidencias e JOIN users u ON e.user_
     <div id="map"></div>
     <div class="map-btn" onclick="verTodos()">VER GLOBAL</div>
     <div class="dock">
-        <div class="col"><div class="head">CHAT</div><div class="chat-scroll" id="chat"></div></div>
+        <div class="col"><div class="head">CHAT</div><div class="chat-scroll" id="chat"></div>
+            <div style="padding:8px;border-top:1px solid #333;display:flex;gap:6px;">
+                <input id="adm_msg" style="flex:1;padding:8px;background:#111;color:#0f0;border:1px solid #333;">
+                <button onclick="admSend()" style="padding:8px 12px;background:#222;color:#0f0;border:1px solid #333;">Enviar</button>
+            </div>
+        </div>
         <div class="col" style="flex:1.5;"><div class="head">FOTOS</div><div class="gal-scroll">
-            <?php foreach($ev as $e): ?>
+            <?php 
+            $car = $_GET['career'] ?? '';
+            $q = "SELECT e.*,u.username FROM evidencias e JOIN users u ON e.user_id=u.id";
+            $p = [];
+            if($car && $car!=='Todos'){ $q .= " WHERE u.career=?"; $p = [$car]; }
+            $q .= " ORDER BY e.fecha DESC";
+            $st=$pdo->prepare($q); $st->execute($p); $ev=$st->fetchAll();
+            foreach($ev as $e): ?>
                 <div class="photo">
                     <a href="<?=$e['ruta_foto']?>" target="_blank"><img src="<?=$e['ruta_foto']?>"></a>
                     <div class="photo-del" onclick="delEv(<?=$e['id']?>,this)">x</div>
@@ -42,12 +70,13 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').add
 var markers={}, bounds=L.latLngBounds();
 
 function up(){
-    fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'leer_todos_gps'})})
+    var c=document.getElementById('carSel').value;
+    fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'leer_todos_gps',career:c})})
     .then(r=>r.json()).then(d=>{
         let h='', curB=L.latLngBounds();
         d.forEach(u=>{
             let lat=parseFloat(u.latitud), lng=parseFloat(u.longitud);
-            let col = u.status=='online'?'#0f0':(u.status=='away'?'orange':'#555');
+            let col = u.st=='online'?'#0f0':(u.st=='away'?'orange':'#555');
             if(markers[u.username]) markers[u.username].setLatLng([lat,lng]);
             else {
                 let i=L.divIcon({className:'p',html:`<div style="background:${col};width:10px;height:10px;border-radius:50%;box-shadow:0 0 10px ${col};border:2px solid white"></div>`});
@@ -55,8 +84,8 @@ function up(){
             }
             curB.extend([lat,lng]);
             h+=`<div class="user-card" onclick="map.flyTo([${lat},${lng}],16)">
-                <div class="uc-info"><b>${u.username}</b><span>GPS:${lat.toFixed(3)}</span></div>
-                <div class="badge ${u.status=='online'?'b-on':'b-off'}">${u.tx}</div></div>`;
+                <div class="uc-info"><b>${u.username}</b><span>${u.career||''}</span><span>GPS:${lat.toFixed(3)}</span></div>
+                <div class="badge ${u.st=='online'?'b-on':'b-off'}">${u.tx}</div></div>`;
         });
         document.getElementById('ulist').innerHTML=h;
         bounds=curB;
@@ -64,10 +93,12 @@ function up(){
     });
 }
 function chat(){
-    fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'leer_chat'})})
+    var c=document.getElementById('carSel').value;
+    fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'leer_chat',career:c})})
     .then(r=>r.json()).then(d=>{
         let h=''; d.forEach(m=>{
-            h+=`<div class="chat-row"><i class="fas fa-times del-btn" onclick="delC(${m.id})"></i><strong>${m.username}:</strong> ${m.mensaje}</div>`;
+            let lat=m.latitud?parseFloat(m.latitud).toFixed(3):'-'; let lng=m.longitud?parseFloat(m.longitud).toFixed(3):'-';
+            h+=`<div class="chat-row"><i class="fas fa-times del-btn" onclick="delC(${m.id})"></i><strong>${m.username}</strong> <span style="color:#0f0">${m.tx}</span> <span style="color:#999">GPS:${lat},${lng}</span><br>${m.mensaje}</div>`;
         });
         document.getElementById('chat').innerHTML=h;
     });
@@ -75,7 +106,9 @@ function chat(){
 window.delC=function(id){if(confirm('Borrar?'))fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'borrar_mensaje',id:id})}).then(chat)};
 window.delEv=function(id,e){if(confirm('Borrar?'))fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'borrar_evidencia',id:id})}).then(()=>e.parentElement.remove())};
 window.verTodos=function(){if(bounds.isValid())map.fitBounds(bounds)};
+document.getElementById('carSel').onchange=function(){up(); chat(); window.l=false;};
 setInterval(up,2000); setInterval(chat,2000); up(); chat();
+function admSend(){var t=document.getElementById('adm_msg').value; if(t){fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'enviar_mensaje',mensaje:t})}).then(()=>{document.getElementById('adm_msg').value=''; chat();});}}
 </script>
 </body>
 </html>

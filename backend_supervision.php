@@ -9,18 +9,45 @@ if($act=='actualizar_gps'){
     $pdo->prepare($sql)->execute([$uid,$_POST['lat'],$_POST['lng']]);
 }
 if($act=='leer_todos_gps' && $adm){
-    $sql="SELECT u.username, l.latitud, l.longitud, TIMESTAMPDIFF(SECOND,l.fecha,NOW()) as s FROM ubicaciones l JOIN users u ON l.user_id=u.id ORDER BY u.username";
+    $car = $_POST['career'] ?? '';
+    $sql = "SELECT u.username, u.career, l.latitud, l.longitud, TIMESTAMPDIFF(SECOND,l.fecha,NOW()) as s FROM ubicaciones l JOIN users u ON l.user_id=u.id";
+    $p=[];
+    if($car && $car!=='Todos'){ $sql .= " WHERE u.career=?"; $p=[$car]; }
+    $sql .= " ORDER BY u.username";
+    $st=$pdo->prepare($sql); $st->execute($p);
     $res=array_map(function($u){
         $s=$u['s'];
         if($s<60){ $u['st']='online'; $u['tx']='EN VIVO'; }
         elseif($s<3600){ $u['st']='away'; $u['tx']='Hace '.intval($s/60).'m'; }
         else{ $u['st']='offline'; $u['tx']='Desconectado'; }
         return $u;
-    }, $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC));
+    }, $st->fetchAll(PDO::FETCH_ASSOC));
     echo json_encode($res);
 }
 if($act=='enviar_mensaje'){ $pdo->prepare("INSERT INTO chat (user_id,mensaje) VALUES (?,?)")->execute([$uid,strip_tags($_POST['mensaje'])]); }
-if($act=='leer_chat'){ echo json_encode(array_reverse($pdo->query("SELECT c.id,c.mensaje,c.fecha,u.username FROM chat c JOIN users u ON c.user_id=u.id ORDER BY c.fecha DESC LIMIT 100")->fetchAll(PDO::FETCH_ASSOC))); }
+if($act=='leer_chat'){
+    if($adm){
+        $car = $_POST['career'] ?? '';
+        $sql = "SELECT c.id,c.mensaje,c.fecha,u.username,u.career,l.latitud,l.longitud,TIMESTAMPDIFF(SECOND,l.fecha,NOW()) as s FROM chat c JOIN users u ON c.user_id=u.id LEFT JOIN ubicaciones l ON l.user_id=u.id";
+        $p=[];
+        if($car && $car!=='Todos'){ $sql .= " WHERE u.career=?"; $p=[$car]; }
+        $sql .= " ORDER BY c.fecha DESC LIMIT 50";
+        $st=$pdo->prepare($sql); $st->execute($p);
+        $res=array_map(function($u){
+            $s=$u['s']??999999; if($s<60){$u['st']='online';$u['tx']='EN VIVO';} elseif($s<3600){$u['st']='away';$u['tx']='Hace '.intval($s/60).'m';} else {$u['st']='offline';$u['tx']='Desconectado';}
+            return $u;
+        }, $st->fetchAll(PDO::FETCH_ASSOC));
+        echo json_encode(array_reverse($res));
+    } else {
+        $sql = "SELECT c.id,c.mensaje,c.fecha,u.username,u.career,l.latitud,l.longitud,TIMESTAMPDIFF(SECOND,l.fecha,NOW()) as s FROM chat c JOIN users u ON c.user_id=u.id LEFT JOIN ubicaciones l ON l.user_id=u.id WHERE u.career=(SELECT career FROM users WHERE id=?) ORDER BY c.fecha DESC LIMIT 50";
+        $st=$pdo->prepare($sql); $st->execute([$uid]);
+        $res=array_map(function($u){
+            $s=$u['s']??999999; if($s<60){$u['st']='online';$u['tx']='EN VIVO';} elseif($s<3600){$u['st']='away';$u['tx']='Hace '.intval($s/60).'m';} else {$u['st']='offline';$u['tx']='Desconectado';}
+            return $u;
+        }, $st->fetchAll(PDO::FETCH_ASSOC));
+        echo json_encode(array_reverse($res));
+    }
+}
 if($act=='subir_foto' && isset($_FILES['foto'])){
     $n=time()."_".$_FILES['foto']['name']; move_uploaded_file($_FILES['foto']['tmp_name'],"uploads/$n");
     $pdo->prepare("INSERT INTO evidencias (user_id,ruta_foto,descripcion) VALUES (?,?,?)")->execute([$uid,"uploads/$n",$_POST['descripcion']]); echo "Subido";
