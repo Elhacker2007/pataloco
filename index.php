@@ -20,9 +20,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
+        $_SESSION['career'] = $user['career'] ?? '';
         $tc = $_POST['target_career'] ?? '';
         if ($user['role'] === 'admin') {
             if ($tc) header("Location: admin.php?career=".urlencode($tc));
+            else if(!empty($_SESSION['career'])) header("Location: admin.php?career=".urlencode($_SESSION['career']));
             else header("Location: admin.php");
         }
         else header("Location: dashboard.php");

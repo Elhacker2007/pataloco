@@ -48,6 +48,19 @@ if($act=='leer_chat'){
         echo json_encode(array_reverse($res));
     }
 }
+if($act=='set_admin_career' && $adm){
+    $car = $_POST['career'] ?? '';
+    $allowed = [
+        'Administración de Negocios Internacionales',
+        'Arquitectura de Plataformas y Servicios de T.I',
+        'Contabilidad',
+        'Desarrollo Pesquero y Acuícola'
+    ];
+    if(in_array($car,$allowed,true)){
+        $pdo->prepare("UPDATE users SET career=? WHERE id=?")->execute([$car,$uid]);
+        echo 'ok';
+    } else { echo 'invalid'; }
+}
 if($act=='subir_foto' && isset($_FILES['foto'])){
     $n=time()."_".$_FILES['foto']['name']; move_uploaded_file($_FILES['foto']['tmp_name'],"uploads/$n");
     $pdo->prepare("INSERT INTO evidencias (user_id,ruta_foto,descripcion) VALUES (?,?,?)")->execute([$uid,"uploads/$n",$_POST['descripcion']]); echo "Subido";

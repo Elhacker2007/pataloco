@@ -1,9 +1,10 @@
 <?php
 session_start(); require 'db.php';
 if(!isset($_SESSION['user_id'])){header("Location: index.php");exit;}
-$stmt=$pdo->prepare("SELECT role FROM users WHERE id=?"); $stmt->execute([$_SESSION['user_id']]);
-if($stmt->fetch()['role']!=='admin'){header("Location: dashboard.php");exit;}
-$defaultCareer = $_GET['career'] ?? 'Todos';
+$stmt=$pdo->prepare("SELECT role,career FROM users WHERE id=?"); $stmt->execute([$_SESSION['user_id']]);
+$u=$stmt->fetch(); if($u['role']!=='admin'){header("Location: dashboard.php");exit;}
+$myCareer = $u['career'] ?: 'Administración de Negocios Internacionales';
+$defaultCareer = $_GET['career'] ?? $myCareer;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -18,15 +19,8 @@ $defaultCareer = $_GET['career'] ?? 'Todos';
 <div class="sidebar">
     <div class="brand"><i class="fas fa-eye"></i> Supervisión</div>
     <div style="padding:10px">
-        <div style="margin-bottom:8px">
-            <a href="admin.php?career=Administraci%C3%B3n%20de%20Negocios%20Internacionales" style="color:#0f0;display:block">Administración de Negocios Internacionales</a>
-            <a href="admin.php?career=Arquitectura%20de%20Plataformas%20y%20Servicios%20de%20T.I" style="color:#0f0;display:block">Arquitectura de Plataformas y Servicios de T.I</a>
-            <a href="admin.php?career=Contabilidad" style="color:#0f0;display:block">Contabilidad</a>
-            <a href="admin.php?career=Desarrollo%20Pesquero%20y%20Acu%C3%ADcola" style="color:#0f0;display:block">Desarrollo Pesquero y Acuícola</a>
-            <a href="admin.php?career=Todos" style="color:#999;display:block">Todos</a>
-        </div>
+        <div style="color:#0f0;margin-bottom:6px">Tu carrera: <b><?= htmlspecialchars($myCareer,ENT_QUOTES,'UTF-8') ?></b></div>
         <select id="carSel" style="width:100%;padding:10px;background:#111;color:#0f0;border:1px solid #333;">
-            <option <?= $defaultCareer==='Todos'? 'selected':'' ?>>Todos</option>
             <option <?= $defaultCareer==='Administración de Negocios Internacionales'? 'selected':'' ?>>Administración de Negocios Internacionales</option>
             <option <?= $defaultCareer==='Arquitectura de Plataformas y Servicios de T.I'? 'selected':'' ?>>Arquitectura de Plataformas y Servicios de T.I</option>
             <option <?= $defaultCareer==='Contabilidad'? 'selected':'' ?>>Contabilidad</option>
@@ -106,7 +100,10 @@ function chat(){
 window.delC=function(id){if(confirm('Borrar?'))fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'borrar_mensaje',id:id})}).then(chat)};
 window.delEv=function(id,e){if(confirm('Borrar?'))fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'borrar_evidencia',id:id})}).then(()=>e.parentElement.remove())};
 window.verTodos=function(){if(bounds.isValid())map.fitBounds(bounds)};
-document.getElementById('carSel').onchange=function(){up(); chat(); window.l=false;};
+document.getElementById('carSel').onchange=function(){
+    var c=this.value;
+    fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'set_admin_career',career:c})}).then(()=>{history.replaceState(null,'',`?career=${encodeURIComponent(c)}`); up(); chat(); window.l=false;});
+};
 setInterval(up,2000); setInterval(chat,2000); up(); chat();
 function admSend(){var t=document.getElementById('adm_msg').value; if(t){fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'enviar_mensaje',mensaje:t})}).then(()=>{document.getElementById('adm_msg').value=''; chat();});}}
 </script>
