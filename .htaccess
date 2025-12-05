@@ -1,0 +1,9 @@
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^([a-z0-9-]+)/login$ index.php?career_slug=$1 [L,QSA]
+RewriteRule ^([a-z0-9-]+)/registro$ registro.php?career_slug=$1 [L,QSA]
+RewriteRule ^admin$ admin.php [L,QSA]
+RewriteRule ^dashboard$ dashboard.php [L,QSA]

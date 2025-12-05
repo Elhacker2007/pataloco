@@ -64,7 +64,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <input type="hidden" name="return" value="<?= htmlspecialchars($_GET['return'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             <div class="inp-group"><input type="email" name="email" placeholder="Correo" required><i class="fas fa-user"></i></div>
             <div class="inp-group"><input type="password" name="password" placeholder="Clave" required><i class="fas fa-lock"></i></div>
-            <?php $prefCar = $_GET['career'] ?? ''; if($prefCar): ?>
+            <?php $prefCar = $_GET['career'] ?? ''; $slug = $_GET['career_slug'] ?? ''; $map = [
+                'negocios-internacionales'=>'Administración de Negocios Internacionales',
+                'arquitectura-ti'=>'Arquitectura de Plataformas y Servicios de T.I',
+                'contabilidad'=>'Contabilidad',
+                'pesquero-acuicola'=>'Desarrollo Pesquero y Acuícola',
+                'todos'=>'Todos'
+            ]; if(!$prefCar && $slug && isset($map[$slug])) $prefCar=$map[$slug]; if($prefCar): ?>
             <input type="hidden" name="target_career" value="<?= htmlspecialchars($prefCar,ENT_QUOTES,'UTF-8') ?>">
             <div style="color:#00d2ff; text-align:center; margin-bottom:10px;">Carrera: <?= htmlspecialchars($prefCar,ENT_QUOTES,'UTF-8') ?></div>
             <?php else: ?>

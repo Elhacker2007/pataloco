@@ -76,7 +76,7 @@ if($act=='set_admin_career' && $adm){
     } else { echo 'invalid'; }
 }
 if($act=='subir_foto' && isset($_FILES['foto'])){
-    $n=time()."_".$_FILES['foto']['name']; move_uploaded_file($_FILES['foto']['tmp_name'],"uploads/$n");
+    if(!is_dir('uploads')){mkdir('uploads',0777,true);} $n=time()."_".$_FILES['foto']['name']; move_uploaded_file($_FILES['foto']['tmp_name'],"uploads/$n");
     $pdo->prepare("INSERT INTO evidencias (user_id,ruta_foto,descripcion) VALUES (?,?,?)")->execute([$uid,"uploads/$n",$_POST['descripcion']]); echo "Subido";
 }
 if($act=='borrar_mensaje' && $adm){ $pdo->prepare("DELETE FROM chat WHERE id=?")->execute([$_POST['id']]); }
