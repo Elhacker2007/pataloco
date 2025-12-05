@@ -2,9 +2,10 @@
 session_start(); require 'db.php';
 if(!isset($_SESSION['user_id'])){header("Location: index.php");exit;}
 $stmt=$pdo->prepare("SELECT role,career FROM users WHERE id=?"); $stmt->execute([$_SESSION['user_id']]);
-$u=$stmt->fetch(); if($u['role']!=='admin'){header("Location: dashboard.php");exit;}
+$u=$stmt->fetch(); $isAdmin=($u['role']==='admin'); $isProfessor=($u['role']==='professor');
+if(!$isAdmin && !$isProfessor){header("Location: dashboard.php");exit;}
 $myCareer = $u['career'] ?: 'Administración de Negocios Internacionales';
-$defaultCareer = $_GET['career'] ?? $myCareer;
+$defaultCareer = $isAdmin ? ($_GET['career'] ?? 'Todos') : $myCareer;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -19,13 +20,17 @@ $defaultCareer = $_GET['career'] ?? $myCareer;
 <div class="sidebar">
     <div class="brand"><i class="fas fa-eye"></i> Supervisión</div>
     <div style="padding:10px">
-        <div style="color:#0f0;margin-bottom:6px">Tu carrera: <b><?= htmlspecialchars($myCareer,ENT_QUOTES,'UTF-8') ?></b></div>
-        <select id="carSel" style="width:100%;padding:10px;background:#111;color:#0f0;border:1px solid #333;">
-            <option <?= $defaultCareer==='Administración de Negocios Internacionales'? 'selected':'' ?>>Administración de Negocios Internacionales</option>
-            <option <?= $defaultCareer==='Arquitectura de Plataformas y Servicios de T.I'? 'selected':'' ?>>Arquitectura de Plataformas y Servicios de T.I</option>
-            <option <?= $defaultCareer==='Contabilidad'? 'selected':'' ?>>Contabilidad</option>
-            <option <?= $defaultCareer==='Desarrollo Pesquero y Acuícola'? 'selected':'' ?>>Desarrollo Pesquero y Acuícola</option>
-        </select>
+        <?php if($isAdmin): ?>
+            <select id="carSel" style="width:100%;padding:10px;background:#111;color:#0f0;border:1px solid #333;">
+                <option <?= $defaultCareer==='Todos'? 'selected':'' ?>>Todos</option>
+                <option <?= $defaultCareer==='Administración de Negocios Internacionales'? 'selected':'' ?>>Administración de Negocios Internacionales</option>
+                <option <?= $defaultCareer==='Arquitectura de Plataformas y Servicios de T.I'? 'selected':'' ?>>Arquitectura de Plataformas y Servicios de T.I</option>
+                <option <?= $defaultCareer==='Contabilidad'? 'selected':'' ?>>Contabilidad</option>
+                <option <?= $defaultCareer==='Desarrollo Pesquero y Acuícola'? 'selected':'' ?>>Desarrollo Pesquero y Acuícola</option>
+            </select>
+        <?php else: ?>
+            <div style="color:#0f0;margin-bottom:6px">Tu carrera: <b><?= htmlspecialchars($myCareer,ENT_QUOTES,'UTF-8') ?></b></div>
+        <?php endif; ?>
     </div>
     <div class="user-list" id="ulist"></div>
     <div style="padding:10px;text-align:center;"><a href="logout.php" style="color:#666;">SALIR</a></div>
@@ -62,9 +67,11 @@ $defaultCareer = $_GET['career'] ?? $myCareer;
 var map=L.map('map').setView([-12,-77],5);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 var markers={}, bounds=L.latLngBounds();
+var DEF_CAR = "<?= addslashes($defaultCareer) ?>";
+var IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
 
 function up(){
-    var c=document.getElementById('carSel').value;
+    var c=(document.getElementById('carSel')?document.getElementById('carSel').value:DEF_CAR);
     fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'leer_todos_gps',career:c})})
     .then(r=>r.json()).then(d=>{
         let h='', curB=L.latLngBounds();
@@ -87,7 +94,7 @@ function up(){
     });
 }
 function chat(){
-    var c=document.getElementById('carSel').value;
+    var c=(document.getElementById('carSel')?document.getElementById('carSel').value:DEF_CAR);
     fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'leer_chat',career:c})})
     .then(r=>r.json()).then(d=>{
         let h=''; d.forEach(m=>{
@@ -100,10 +107,14 @@ function chat(){
 window.delC=function(id){if(confirm('Borrar?'))fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'borrar_mensaje',id:id})}).then(chat)};
 window.delEv=function(id,e){if(confirm('Borrar?'))fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'borrar_evidencia',id:id})}).then(()=>e.parentElement.remove())};
 window.verTodos=function(){if(bounds.isValid())map.fitBounds(bounds)};
-document.getElementById('carSel').onchange=function(){
-    var c=this.value;
-    fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'set_admin_career',career:c})}).then(()=>{history.replaceState(null,'',`?career=${encodeURIComponent(c)}`); up(); chat(); window.l=false;});
-};
+if(document.getElementById('carSel')){
+    document.getElementById('carSel').onchange=function(){
+        var c=this.value;
+        if(IS_ADMIN){
+            fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'set_admin_career',career:c})}).then(()=>{history.replaceState(null,'',`?career=${encodeURIComponent(c)}`); up(); chat(); window.l=false;});
+        } else { up(); chat(); window.l=false; }
+    };
+}
 setInterval(up,2000); setInterval(chat,2000); up(); chat();
 function admSend(){var t=document.getElementById('adm_msg').value; if(t){fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'enviar_mensaje',mensaje:t})}).then(()=>{document.getElementById('adm_msg').value=''; chat();});}}
 </script>
