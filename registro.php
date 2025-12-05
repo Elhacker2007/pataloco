@@ -2,6 +2,14 @@
 require 'db.php';
 $msg = "";
 $prefCar = $_GET['career'] ?? '';
+$slug = $_GET['career_slug'] ?? '';
+$map = [
+    'negocios-internacionales'=>'Administración de Negocios Internacionales',
+    'arquitectura-ti'=>'Arquitectura de Plataformas y Servicios de T.I',
+    'contabilidad'=>'Contabilidad',
+    'pesquero-acuicola'=>'Desarrollo Pesquero y Acuícola'
+];
+if(!$prefCar && $slug && isset($map[$slug])) $prefCar=$map[$slug];
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $user = trim($_POST['username']);
     $email = trim($_POST['email']);

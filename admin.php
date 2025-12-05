@@ -1,8 +1,10 @@
 <?php
 session_start(); require 'db.php';
 if(!isset($_SESSION['user_id'])){
-    $car = isset($_GET['career']) ? $_GET['career'] : '';
-    $ret = 'admin.php' . ($car ? ('?career=' . urlencode($car)) : '');
+    $car = $_GET['career'] ?? '';
+    $slug = $_GET['career_slug'] ?? '';
+    $qs = $slug ? ('?career_slug=' . urlencode($slug)) : ($car ? ('?career=' . urlencode($car)) : '');
+    $ret = 'admin.php' . $qs;
     header("Location: index.php?return=".urlencode($ret));
     exit;
 }
@@ -10,7 +12,18 @@ $stmt=$pdo->prepare("SELECT role,career FROM users WHERE id=?"); $stmt->execute(
 $u=$stmt->fetch(); $isAdmin=($u['role']==='admin'); $isProfessor=($u['role']==='professor');
 if(!$isAdmin && !$isProfessor){header("Location: dashboard.php");exit;}
 $myCareer = $u['career'] ?: 'Administración de Negocios Internacionales';
-$defaultCareer = $isAdmin ? ($_GET['career'] ?? 'Todos') : $myCareer;
+$slug = $_GET['career_slug'] ?? '';
+$map = [
+    'negocios-internacionales'=>'Administración de Negocios Internacionales',
+    'arquitectura-ti'=>'Arquitectura de Plataformas y Servicios de T.I',
+    'contabilidad'=>'Contabilidad',
+    'pesquero-acuicola'=>'Desarrollo Pesquero y Acuícola',
+    'todos'=>'Todos'
+];
+$defaultCareer = $myCareer;
+if($isAdmin){
+    $defaultCareer = $_GET['career'] ?? ($slug && isset($map[$slug]) ? $map[$slug] : 'Todos');
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -64,6 +77,8 @@ $defaultCareer = $isAdmin ? ($_GET['career'] ?? 'Todos') : $myCareer;
         <div class="col" style="flex:1.5;"><div class="head">FOTOS</div><div class="gal-scroll">
             <?php 
             $car = $_GET['career'] ?? '';
+            $slug = $_GET['career_slug'] ?? '';
+            if(!$car && $slug && isset($map[$slug])) $car=$map[$slug];
             $q = "SELECT e.*,u.username FROM evidencias e JOIN users u ON e.user_id=u.id";
             $p = [];
             if($car && $car!=='Todos'){ $q .= " WHERE u.career=?"; $p = [$car]; }
