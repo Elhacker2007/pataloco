@@ -4,9 +4,9 @@ require 'db.php';
 
 if (isset($_SESSION['user_id'])) {
     $retGet = $_GET['return'] ?? '';
-    if ($retGet && strpos($retGet,'admin.php')===0 && $_SESSION['role']==='admin') { header("Location: $retGet"); exit(); }
-    if ($retGet && strpos($retGet,'dashboard.php')===0 && $_SESSION['role']!=='admin') { header("Location: $retGet"); exit(); }
-    if ($_SESSION['role'] === 'admin') header("Location: admin.php");
+    if ($retGet && strpos($retGet,'admin.php')===0 && ($_SESSION['role']==='admin' || $_SESSION['role']==='professor')) { header("Location: $retGet"); exit(); }
+    if ($retGet && strpos($retGet,'dashboard.php')===0 && $_SESSION['role']==='student') { header("Location: $retGet"); exit(); }
+    if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'professor') header("Location: admin.php");
     else header("Location: dashboard.php");
     exit();
 }
@@ -31,8 +31,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             elseif ($tc) header("Location: admin.php?career=".urlencode($tc));
             elseif(!empty($_SESSION['career'])) header("Location: admin.php?career=".urlencode($_SESSION['career']));
             else header("Location: admin.php");
-        }
-        else {
+        } elseif ($user['role'] === 'professor') {
+            $car = $_SESSION['career'] ?: $tc;
+            if ($ret && strpos($ret,'admin.php')===0) header("Location: $ret");
+            else header("Location: admin.php?career=".urlencode($car));
+        } else {
             if ($ret && strpos($ret,'dashboard.php')===0) header("Location: $ret");
             else header("Location: dashboard.php");
         }
@@ -61,6 +64,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <input type="hidden" name="return" value="<?= htmlspecialchars($_GET['return'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             <div class="inp-group"><input type="email" name="email" placeholder="Correo" required><i class="fas fa-user"></i></div>
             <div class="inp-group"><input type="password" name="password" placeholder="Clave" required><i class="fas fa-lock"></i></div>
+            <?php $prefCar = $_GET['career'] ?? ''; if($prefCar): ?>
+            <input type="hidden" name="target_career" value="<?= htmlspecialchars($prefCar,ENT_QUOTES,'UTF-8') ?>">
+            <div style="color:#00d2ff; text-align:center; margin-bottom:10px;">Carrera: <?= htmlspecialchars($prefCar,ENT_QUOTES,'UTF-8') ?></div>
+            <?php else: ?>
             <div class="inp-group">
                 <select name="target_career" style="width:100%;padding:12px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);border-radius:30px;color:white;">
                     <option value="">(Seleccionar carrera para supervisión)</option>
@@ -71,6 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <option>Todos</option>
                 </select>
             </div>
+            <?php endif; ?>
             <button type="submit" class="btn-login">INGRESAR</button>
         </form>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
@@ -78,6 +86,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <button type="button" class="btn-login" style="background:#3a7bd5" onclick="setC('Arquitectura de Plataformas y Servicios de T.I')">Arquitectura TI</button>
             <button type="button" class="btn-login" style="background:#3a7bd5" onclick="setC('Contabilidad')">Contabilidad</button>
             <button type="button" class="btn-login" style="background:#3a7bd5" onclick="setC('Desarrollo Pesquero y Acuícola')">Pesquero/Acuícola</button>
+        </div>
+        <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <a class="btn-login" style="text-align:center;background:#2b5876" href="registro.php?career=Administraci%C3%B3n%20de%20Negocios%20Internacionales">Registro Adm. Negocios</a>
+            <a class="btn-login" style="text-align:center;background:#2b5876" href="registro.php?career=Arquitectura%20de%20Plataformas%20y%20Servicios%20de%20T.I">Registro Arquitectura TI</a>
+            <a class="btn-login" style="text-align:center;background:#2b5876" href="registro.php?career=Contabilidad">Registro Contabilidad</a>
+            <a class="btn-login" style="text-align:center;background:#2b5876" href="registro.php?career=Desarrollo%20Pesquero%20y%20Acu%C3%ADcola">Registro Pesquero/Acuícola</a>
         </div>
         <script>
         function setC(v){var s=document.querySelector('select[name="target_career"]'); if(s){s.value=v;}}
