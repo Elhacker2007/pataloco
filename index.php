@@ -3,6 +3,9 @@ session_start();
 require 'db.php';
 
 if (isset($_SESSION['user_id'])) {
+    $retGet = $_GET['return'] ?? '';
+    if ($retGet && strpos($retGet,'admin.php')===0 && $_SESSION['role']==='admin') { header("Location: $retGet"); exit(); }
+    if ($retGet && strpos($retGet,'dashboard.php')===0 && $_SESSION['role']!=='admin') { header("Location: $retGet"); exit(); }
     if ($_SESSION['role'] === 'admin') header("Location: admin.php");
     else header("Location: dashboard.php");
     exit();
@@ -21,13 +24,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['career'] = $user['career'] ?? '';
+        $ret = $_POST['return'] ?? '';
         $tc = $_POST['target_career'] ?? '';
         if ($user['role'] === 'admin') {
-            if ($tc) header("Location: admin.php?career=".urlencode($tc));
-            else if(!empty($_SESSION['career'])) header("Location: admin.php?career=".urlencode($_SESSION['career']));
+            if ($ret && strpos($ret,'admin.php')===0) header("Location: $ret");
+            elseif ($tc) header("Location: admin.php?career=".urlencode($tc));
+            elseif(!empty($_SESSION['career'])) header("Location: admin.php?career=".urlencode($_SESSION['career']));
             else header("Location: admin.php");
         }
-        else header("Location: dashboard.php");
+        else {
+            if ($ret && strpos($ret,'dashboard.php')===0) header("Location: $ret");
+            else header("Location: dashboard.php");
+        }
         exit();
     } else {
         $msg = "Error: Credenciales incorrectas";
@@ -50,6 +58,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <p>Conéctate por tu carrera y rol</p>
         <?php if($msg): ?><div style="color:red; margin-bottom:10px;<?= '' ?>"><?= $msg ?></div><?php endif; ?>
         <form method="POST">
+            <input type="hidden" name="return" value="<?= htmlspecialchars($_GET['return'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             <div class="inp-group"><input type="email" name="email" placeholder="Correo" required><i class="fas fa-user"></i></div>
             <div class="inp-group"><input type="password" name="password" placeholder="Clave" required><i class="fas fa-lock"></i></div>
             <div class="inp-group">

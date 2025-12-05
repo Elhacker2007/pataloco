@@ -1,6 +1,6 @@
 <?php
 session_start();
-if(!isset($_SESSION['user_id'])){header("Location: index.php");exit;}
+if(!isset($_SESSION['user_id'])){header("Location: index.php?return=".urlencode('dashboard.php'));exit;}
 if($_SESSION['role']=='admin'){header("Location: admin.php");exit;}
 require 'db.php';
 $st=$pdo->prepare("SELECT career FROM users WHERE id=?"); $st->execute([$_SESSION['user_id']]);
