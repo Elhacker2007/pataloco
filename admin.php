@@ -31,6 +31,17 @@ $defaultCareer = $isAdmin ? ($_GET['career'] ?? 'Todos') : $myCareer;
         <?php else: ?>
             <div style="color:#0f0;margin-bottom:6px">Tu carrera: <b><?= htmlspecialchars($myCareer,ENT_QUOTES,'UTF-8') ?></b></div>
         <?php endif; ?>
+        <?php if($isAdmin): ?>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
+                <button onclick="quick('Administración de Negocios Internacionales')" class="map-btn">Adm. Negocios</button>
+                <button onclick="quick('Arquitectura de Plataformas y Servicios de T.I')" class="map-btn">Arquitectura TI</button>
+                <button onclick="quick('Contabilidad')" class="map-btn">Contabilidad</button>
+                <button onclick="quick('Desarrollo Pesquero y Acuícola')" class="map-btn">Pesquero</button>
+                <button onclick="quick('Todos')" class="map-btn" style="grid-column:1/-1">Todos</button>
+            </div>
+        <?php endif; ?>
+        <div id="stats" style="margin-top:8px;color:#0f0;font-family:'Rajdhani';"></div>
+        <input id="searchU" placeholder="Buscar alumno" style="width:100%;padding:8px;margin-top:8px;background:#111;color:#0f0;border:1px solid #333;"/>
     </div>
     <div class="user-list" id="ulist"></div>
     <div style="padding:10px;text-align:center;"><a href="logout.php" style="color:#666;">SALIR</a></div>
@@ -69,15 +80,19 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').add
 var markers={}, bounds=L.latLngBounds();
 var DEF_CAR = "<?= addslashes($defaultCareer) ?>";
 var IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
+var LAST_USERS=[];
+function quick(v){var s=document.getElementById('carSel'); if(s){s.value=v; s.dispatchEvent(new Event('change'));}}
 
 function up(){
     var c=(document.getElementById('carSel')?document.getElementById('carSel').value:DEF_CAR);
     fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'leer_todos_gps',career:c})})
     .then(r=>r.json()).then(d=>{
         let h='', curB=L.latLngBounds();
+        LAST_USERS=d; let on=0,aw=0,off=0;
         d.forEach(u=>{
             let lat=parseFloat(u.latitud), lng=parseFloat(u.longitud);
             let col = u.st=='online'?'#0f0':(u.st=='away'?'orange':'#555');
+            if(u.st=='online') on++; else if(u.st=='away') aw++; else off++;
             if(markers[u.username]) markers[u.username].setLatLng([lat,lng]);
             else {
                 let i=L.divIcon({className:'p',html:`<div style="background:${col};width:10px;height:10px;border-radius:50%;box-shadow:0 0 10px ${col};border:2px solid white"></div>`});
@@ -89,6 +104,7 @@ function up(){
                 <div class="badge ${u.st=='online'?'b-on':'b-off'}">${u.tx}</div></div>`;
         });
         document.getElementById('ulist').innerHTML=h;
+        document.getElementById('stats').innerHTML=`${c} · ON:${on} AW:${aw} OFF:${off}`;
         bounds=curB;
         if(!window.l && d.length>0){ map.fitBounds(bounds); window.l=true; }
     });
@@ -99,7 +115,8 @@ function chat(){
     .then(r=>r.json()).then(d=>{
         let h=''; d.forEach(m=>{
             let lat=m.latitud?parseFloat(m.latitud).toFixed(3):'-'; let lng=m.longitud?parseFloat(m.longitud).toFixed(3):'-';
-            h+=`<div class="chat-row"><i class="fas fa-times del-btn" onclick="delC(${m.id})"></i><strong>${m.username}</strong> <span style="color:#0f0">${m.tx}</span> <span style="color:#999">GPS:${lat},${lng}</span><br>${m.mensaje}</div>`;
+            let del = IS_ADMIN ? `<i class=\"fas fa-times del-btn\" onclick=\"delC(${m.id})\"></i>` : '';
+            h+=`<div class="chat-row">${del}<strong>${m.username}</strong> <span style="color:#0f0">${m.tx}</span> <span style="color:#999">GPS:${lat},${lng}</span><br>${m.mensaje}</div>`;
         });
         document.getElementById('chat').innerHTML=h;
     });
@@ -115,6 +132,14 @@ if(document.getElementById('carSel')){
         } else { up(); chat(); window.l=false; }
     };
 }
+document.getElementById('searchU').oninput=function(){
+    var q=this.value.toLowerCase(); let h='';
+    LAST_USERS.filter(u=>u.username.toLowerCase().includes(q)).forEach(u=>{
+        let lat=parseFloat(u.latitud), lng=parseFloat(u.longitud);
+        h+=`<div class="user-card" onclick="map.flyTo([${lat},${lng}],16)"><div class="uc-info"><b>${u.username}</b><span>${u.career||''}</span><span>GPS:${lat.toFixed(3)}</span></div><div class="badge ${u.st=='online'?'b-on':'b-off'}">${u.tx}</div></div>`;
+    });
+    document.getElementById('ulist').innerHTML=h;
+};
 setInterval(up,2000); setInterval(chat,2000); up(); chat();
 function admSend(){var t=document.getElementById('adm_msg').value; if(t){fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'enviar_mensaje',mensaje:t})}).then(()=>{document.getElementById('adm_msg').value=''; chat();});}}
 </script>
