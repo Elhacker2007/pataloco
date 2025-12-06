@@ -1,10 +1,22 @@
 <?php
 session_start();
-if(!isset($_SESSION['user_id'])){header("Location: index.php?return=".urlencode('dashboard.php'));exit;}
+$slug = $_GET['career_slug'] ?? '';
+if(!isset($_SESSION['user_id'])){
+    $ret = 'dashboard.php' . ($slug ? ('?career_slug=' . urlencode($slug)) : '');
+    header("Location: index.php?return=".urlencode($ret));
+    exit;
+}
 if($_SESSION['role']=='admin'){header("Location: admin.php");exit;}
 require 'db.php';
 $st=$pdo->prepare("SELECT career FROM users WHERE id=?"); $st->execute([$_SESSION['user_id']]);
 $career=$st->fetch()['career'] ?? 'Carrera';
+$map=[
+    'negocios-internacionales'=>'Administración de Negocios Internacionales',
+    'arquitectura-ti'=>'Arquitectura de Plataformas y Servicios de T.I',
+    'contabilidad'=>'Contabilidad',
+    'pesquero-acuicola'=>'Desarrollo Pesquero y Acuícola'
+];
+$demoCar = ($slug && isset($map[$slug])) ? $map[$slug] : '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -28,7 +40,7 @@ $career=$st->fetch()['career'] ?? 'Carrera';
     </style>
 </head>
 <body>
-<div class="head"><b>Portal Estudiante – <?=$career?></b><a href="logout.php" style="color:white;"><i class="fas fa-power-off"></i></a></div>
+<div class="head"><b>Portal Estudiante – <?= $demoCar ?: $career ?></b><a href="logout.php" style="color:white;"><i class="fas fa-power-off"></i></a></div>
 
 <div id="v1" class="v active">
     <div class="card">
