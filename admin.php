@@ -60,6 +60,15 @@ if($isAdmin){
         <?php endif; ?>
         <div id="stats" style="margin-top:8px;color:#0f0;font-family:'Rajdhani';"></div>
         <input id="searchU" placeholder="Buscar alumno" style="width:100%;padding:8px;margin-top:8px;background:#111;color:#0f0;border:1px solid #333;"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
+            <button class="map-btn" onclick="copyLink('chat')">COPIAR CHAT</button>
+            <button class="map-btn" onclick="copyLink('fotos')">COPIAR FOTOS</button>
+            <button class="map-btn" style="grid-column:1/-1" onclick="copyLink('map')">COPIAR MAPA</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
+            <button class="map-btn" onclick="setRun(false)">PAUSAR AUTO</button>
+            <button class="map-btn" onclick="setRun(true)">REANUDAR AUTO</button>
+        </div>
     </div>
     <div class="user-list" id="ulist"></div>
     <div style="padding:10px;text-align:center;"><a href="logout.php" style="color:#666;">SALIR</a></div>
@@ -103,13 +112,30 @@ var IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
 var LAST_USERS=[];
 function quick(v){var s=document.getElementById('carSel'); if(s){s.value=v; s.dispatchEvent(new Event('change'));}}
 var VIEW = "<?= isset($_GET['view']) ? addslashes($_GET['view']) : '' ?>";
+var BASE = "<?= rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') ?>";
+var SLUGS = {
+    'Administración de Negocios Internacionales':'negocios-internacionales',
+    'Arquitectura de Plataformas y Servicios de T.I':'arquitectura-ti',
+    'Contabilidad':'contabilidad',
+    'Desarrollo Pesquero y Acuícola':'pesquero-acuicola',
+    'Todos':'todos'
+};
+function curCar(){return (document.getElementById('carSel')?document.getElementById('carSel').value:DEF_CAR);} 
+var RUN=true; function setRun(v){RUN=v;}
+function copyLink(view){
+    var slug = SLUGS[curCar()] || 'todos';
+    var u = location.origin + BASE + '/admin/' + slug + (view==='chat'?'/chat':(view==='fotos'?'/fotos':''));
+    navigator.clipboard.writeText(u).then(()=>{ var b=view==='chat'?document.querySelector('button[onclick="copyLink(\'chat\')"]'):document.querySelector('button[onclick="copyLink(\'fotos\')"]'); if(b){ var t=b.textContent; b.textContent='COPIADO'; setTimeout(()=>b.textContent=t,1200);} });
+}
 
 function up(){
+    if(!RUN) return;
     var c=(document.getElementById('carSel')?document.getElementById('carSel').value:DEF_CAR);
     fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'leer_todos_gps',career:c})})
     .then(r=>r.json()).then(d=>{
         let h='', curB=L.latLngBounds();
         LAST_USERS=d; let on=0,aw=0,off=0;
+        d.sort((a,b)=>{const p=x=>x.st=='online'?0:(x.st=='away'?1:2); const pa=p(a), pb=p(b); if(pa!=pb) return pa-pb; return (a.username||'').localeCompare(b.username||'');});
         d.forEach(u=>{
             let lat=parseFloat(u.latitud), lng=parseFloat(u.longitud);
             let col = u.st=='online'?'#0f0':(u.st=='away'?'orange':'#555');
@@ -131,6 +157,7 @@ function up(){
     });
 }
 function chat(){
+    if(!RUN) return;
     var c=(document.getElementById('carSel')?document.getElementById('carSel').value:DEF_CAR);
     fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'leer_chat',career:c})})
     .then(r=>r.json()).then(d=>{
