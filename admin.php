@@ -74,7 +74,7 @@ if($isAdmin){
                 <button onclick="admSend()" style="padding:8px 12px;background:#222;color:#0f0;border:1px solid #333;">Enviar</button>
             </div>
         </div>
-        <div class="col" style="flex:1.5;"><div class="head">FOTOS</div><div class="gal-scroll">
+        <div class="col" style="flex:1.5;"><div class="head">FOTOS</div><div class="gal-scroll" id="gal">
             <?php 
             $car = $_GET['career'] ?? '';
             $slug = $_GET['career_slug'] ?? '';
@@ -102,6 +102,7 @@ var DEF_CAR = "<?= addslashes($defaultCareer) ?>";
 var IS_ADMIN = <?= $isAdmin ? 'true' : 'false' ?>;
 var LAST_USERS=[];
 function quick(v){var s=document.getElementById('carSel'); if(s){s.value=v; s.dispatchEvent(new Event('change'));}}
+var VIEW = "<?= isset($_GET['view']) ? addslashes($_GET['view']) : '' ?>";
 
 function up(){
     var c=(document.getElementById('carSel')?document.getElementById('carSel').value:DEF_CAR);
@@ -161,6 +162,8 @@ document.getElementById('searchU').oninput=function(){
     document.getElementById('ulist').innerHTML=h;
 };
 setInterval(up,2000); setInterval(chat,2000); up(); chat();
+if(VIEW==='chat'){document.getElementById('chat').scrollIntoView({behavior:'smooth'});document.getElementById('adm_msg').focus();}
+else if(VIEW==='fotos'){document.getElementById('gal').scrollIntoView({behavior:'smooth'});} 
 function admSend(){var t=document.getElementById('adm_msg').value; if(t){fetch('backend_supervision.php',{method:'POST',body:new URLSearchParams({accion:'enviar_mensaje',mensaje:t})}).then(()=>{document.getElementById('adm_msg').value=''; chat();});}}
 </script>
 </body>
